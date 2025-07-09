@@ -12,8 +12,8 @@ from selenium.webdriver.common.actions.pointer_input import PointerInput
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.common.by import By
-from solver import RecaptchaSolver
-
+import cap
+import subprocess
 
 
 
@@ -107,25 +107,51 @@ class Streamer:
             expected_conditions.presence_of_element_located((AppiumBy.ID, "com.spotify.music:id/name_next_button"))
         ).click()
         # recaptcha clicks
+        time.sleep(3)
         contexts = self.driver.contexts
         print("Available contexts:", contexts)
         print("Current context:", self.driver.current_context)
         print("Switching to webview context...")
         if len(contexts) > 1:
-            self.driver.switch_to.context(contexts[1])
+                self.driver.switch_to.context(contexts[1])
         time.sleep(5)
+        captcha = cap.capsolver()
+        if not captcha:
+            print("Captcha solving failed, exiting...")
+            return
+        print("Captcha solved, token:", captcha)
+        injection = """
+        const widget = document.querySelector('.g-recaptcha');
+        const cbName = widget.getAttribute('data-callback');  
+        window[cbName]('"""+captcha+"""');  
+        document.querySelector('button[name="solve"]').click();
+        """
+        self.driver.execute_script(injection)
+        time.sleep(3)
+        contexts = self.driver.contexts
+        print("Available contexts:", contexts)
+        print("Current context:", self.driver.current_context)
+        print("Switching to native context...")
+        if len(contexts) > 1:
+                self.driver.switch_to.context(contexts[0])
         WebDriverWait(self.driver, 10).until(
-            expected_conditions.presence_of_element_located((AppiumBy.XPATH, "//main[@id='encore-web-main-content']/div[2]/div/div/div/div/div"))
+            expected_conditions.presence_of_element_located((AppiumBy.ANDROID_UIAUTOMATOR,"new UiSelector().text(\"Continue\")"))
         ).click()
+        
+        
+        
+        #WebDriverWait(self.driver, 10).until(
+        #    expected_conditions.presence_of_element_located((AppiumBy.XPATH, "//main[@id='encore-web-main-content']/div[2]/div/div/div/div/div"))
+        #).click()
+        #self.driver.execute_script("document.querySelector('textarea[name=\"g-recaptcha-response\"]').value = 'jhgjhf';")
+        #time.sleep(5)
+        #print(WebDriverWait(self.driver, 10).until(
+        #    expected_conditions.presence_of_element_located((AppiumBy.XPATH, "//textarea[@name=\"g-recaptcha-response\"]"))
+        #)._execute("value"))
+        #print(self.driver.execute_script("return document.querySelector('textarea[name=\"g-recaptcha-response\"]').value;"))
         time.sleep(5)
-        print(WebDriverWait(self.driver, 10).until(
-            expected_conditions.presence_of_element_located((AppiumBy.XPATH, "//textarea[@name='g-recaptcha-response']"))
-        ).text)
-        time.sleep(5)
-        recaptcha_iframe = self.driver.find_element(By.XPATH, '//iframe[@title="reCAPTCHA"]')
-        solver = RecaptchaSolver(driver=self.driver)
-        solver.click_recaptcha_v2(iframe=recaptcha_iframe)
-        time.sleep(5)
+
+        """time.sleep(5)
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.CheckBox"))
         ).click()
@@ -134,7 +160,7 @@ class Streamer:
             expected_conditions.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.Button"))
         ).click()
         time.sleep(5)
-        #selection of genre page
+        #selection of genre page"""
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((AppiumBy.ANDROID_UIAUTOMATOR, "new UiSelector().text(\"Hindi\")"))
         ).click()
@@ -169,9 +195,29 @@ class Streamer:
         ).click()
         time.sleep(10)
 
-    def play(self, song_name=None):
+    def play(self, track=None,album=None, playlist=None):
+        time.sleep(5)
+        if track is None and album is None and playlist is None:
+            print("No track, album or playlist specified. Launching Spotify app.")
+            return 
 
-        WebDriverWait(self.driver, 10).until(
+        cmd = [
+            "adb", "shell", "am", "start",
+            "-a", "android.intent.action.VIEW",
+            "-d", f"spotify:track:{track}?context=spotify:playlist:{playlist}",
+            "-n", "com.spotify.music/.MainActivity"
+        ]
+        # Run the command, capture output for debugging
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print("Launched successfully:")
+            print(result.stdout)
+        else:
+            print("Error launching:")
+            print(result.stderr)
+
+        """WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((AppiumBy.ANDROID_UIAUTOMATOR, "new UiSelector().className(\"android.widget.Button\").instance(4)"))
         ).click()
         WebDriverWait(self.driver, 10).until(
@@ -196,6 +242,7 @@ class Streamer:
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((AppiumBy.ID, "com.spotify.music:id/subtitle"))
         ).click()
+"""
 
 
 
@@ -206,7 +253,6 @@ class Streamer:
 
 
 
-
-Stream = Streamer( NewInstance=True)
-Stream.gen()
-Stream.play()
+Stream = Streamer( NewInstance=False)
+#Stream.gen()
+Stream.play(track="0FTmksd2dxiE5e3rWyJXs6",playlist="37i9dQZF1DXcBWIGoYBM5M")

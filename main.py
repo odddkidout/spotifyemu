@@ -23,19 +23,13 @@ logging.disable(logging.CRITICAL)
 try:
     from tqdm import tqdm
 except ImportError:
-    print("Установите библиотеку tqdm: pip install tqdm")
+    print("pip install tqdm")
     sys.exit(1)
 
-# Инициализация colorama
 init(autoreset=True)
 
 proxies = []
 proxies_lock = threading.Lock()
-
-# =========================
-# Функции для работы (аутентификация, скачивание, проверка и т.д.)
-# =========================
-
 
 
 
@@ -110,9 +104,6 @@ def update_proxies_from_link(link, interval):
                 proxies = []
         threading.Event().wait(interval * 60)
 
-# =========================
-# Функция run_processing с потоковой обработкой, проверками stop_event и сохранением остатка
-# =========================
 
 def run_processing(settings, log_callback, progress_callback, stop_event, app):
     try:
@@ -378,9 +369,6 @@ def run_processing(settings, log_callback, progress_callback, stop_event, app):
     reg_file.close()
     app.on_processing_finished()
 
-# =========================
-# Графический интерфейс на PyQt5 с динамическим переводом
-# =========================
 from PyQt5 import QtWidgets, QtCore, QtGui
 import qdarkstyle
 
