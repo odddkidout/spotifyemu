@@ -24,19 +24,25 @@ class Streamer:
         options = AppiumOptions()
         if not NewInstance:
             options.load_capabilities({
-                "platformName": "android",
-                "appium:platformVersion": "12",
-                "appium:deviceName": "sdk_gphone64_arm64",
+                "platformName": "Android",
+                "appium:platformVersion": "9",
+                "appium:deviceName": "temp",
+                "appium:udid": "3251534e37313498",
                 "appium:automationName": "UiAutomator2",
                 "appium:appPackage": "com.spotify.music",
                 "appium:appActivity": "com.spotify.music.MainActivity",
                 "appium:ensureWebviewsHavePages": True,
                 "appium:nativeWebScreenshot": True,
                 "appium:newCommandTimeout": 3600,
-                "appium:connectHardwareKeyboard": True,
-                "appium:noReset": True,
-                "appium:fullReset": False
-            })
+                "appium:noReset": False,
+                "appium:fullReset": False,
+
+                "goog:chromeOptions": {
+                    # "androidPackage": "com.spotify.music",
+                    # "androidPackage": "WEBVIEW_chrome",
+                    "androidPackage": "com.android.chrome",
+                    "androidUseRunningApp": True}})
+
         else:
             options.load_capabilities({
                 "platformName": "android",
@@ -191,7 +197,7 @@ class Streamer:
             expected_conditions.presence_of_element_located((AppiumBy.ANDROID_UIAUTOMATOR, "new UiSelector().resourceId(\"com.spotify.music:id/image\").instance(2)"))
         ).click()
         WebDriverWait(self.driver, 10).until(
-            expected_conditions.presence_of_element_located((AppiumBy.ANDROID_UIAUTOMATOR, "new UiSelector().resourceId(\"com.spotify.music:id/image\").instance(10)"))
+            expected_conditions.presence_of_element_located((AppiumBy.ANDROID_UIAUTOMATOR, "new UiSelector().resourceId(\"com.spotify.music:id/image\").instance(4)"))
         ).click()
         time.sleep(10)
 
@@ -202,11 +208,13 @@ class Streamer:
             return 
 
         cmd = [
-            "adb", "shell", "am", "start",
+            "adb", "-s", "3251534e37313498",  # Specify device here
+            "shell", "am", "start",
             "-a", "android.intent.action.VIEW",
             "-d", f"spotify:track:{track}?context=spotify:playlist:{playlist}",
             "-n", "com.spotify.music/.MainActivity"
         ]
+
         # Run the command, capture output for debugging
         result = subprocess.run(cmd, capture_output=True, text=True)
         
@@ -254,5 +262,5 @@ class Streamer:
 
 
 Stream = Streamer( NewInstance=False)
-#Stream.gen()
+Stream.gen()
 Stream.play(track="0FTmksd2dxiE5e3rWyJXs6",playlist="37i9dQZF1DXcBWIGoYBM5M")

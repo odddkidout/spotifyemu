@@ -83,7 +83,7 @@ class Streamer:
                 "appium:newCommandTimeout": 3600,
             })
 
-        self.driver = webdriver.Remote("http://127.0.0.1:4723/wd/hub", options=options)
+        self.driver = webdriver.Remote("http://127.0.0.1:4723", options=options)
 
     def gen(self, length=10):
         """Generate a random string of fixed length."""
@@ -100,7 +100,7 @@ class Streamer:
         ).click()
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((AppiumBy.ID, "com.spotify.music:id/email"))
-        ).send_keys(''.join(random.choices(string.ascii_lowercase + string.digits, k=10)) + '@nophear.in')
+        ).send_keys(self.email)
 
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((AppiumBy.ID, "com.spotify.music:id/email_next_button"))
@@ -108,7 +108,7 @@ class Streamer:
 
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((By.ID, "com.spotify.music:id/input_password"))
-        ).send_keys("ababsjjh@sdjkfhds.com")
+        ).send_keys(self.password)
 
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((By.ID, "com.spotify.music:id/password_next_button"))
@@ -165,14 +165,11 @@ class Streamer:
             print("Captcha solving failed, exiting...")
             return
         print("Captcha solved, token:", captcha)
-        injection = """
-        const widget = document.querySelector('.g-recaptcha');
-        const cbName = widget.getAttribute('data-callback');  
-        window[cbName]('""" + captcha + """');  
-        document.querySelector('button[name="solve"]').click();
-        """
-        self.driver.execute_script(injection)
-        time.sleep(3)
+        
+        self.driver.execute_script("""const widget = document.querySelector('.g-recaptcha');const cbName = widget.getAttribute('data-callback');window[cbName]('""" + captcha + """');""")
+
+        time.sleep(2)
+        self.driver.execute_script('document.querySelector("#encore-web-main-content > div:nth-child(2) > div > div > div > div > div > button").click()')
 
         contexts = self.driver.contexts
         print("Available contexts:", contexts)
@@ -243,22 +240,44 @@ class Streamer:
         ).click()
         WebDriverWait(self.driver, 10).until(
             expected_conditions.presence_of_element_located((AppiumBy.ANDROID_UIAUTOMATOR,
-                                                             "new UiSelector().resourceId(\"com.spotify.music:id/image\").instance(10)"))
+                                                             "new UiSelector().resourceId(\"com.spotify.music:id/image\").instance(4)"))
         ).click()
         time.sleep(10)
 
-    def play(self, track=None, album=None, playlist=None):
+    def play(self, track=None, album=None, playlist=None,playtime=60):
         time.sleep(5)
         if track is None and album is None and playlist is None:
             print("No track, album or playlist specified. Launching Spotify app.")
             return
-        cmd = [
+
+        if track is not None and album is None and playlist is None:
+            cmd = [
+            "adb", "-s", self.dev,  # Specify device here
+            "shell", "am", "start",
+            "-a", "android.intent.action.VIEW",
+            "-d", f"spotify:track:{track}",
+            "-n", "com.spotify.music/.MainActivity"
+        ]
+
+        elif album is not None and track is not None and playlist is None:
+            cmd = [
+            "adb", "-s", self.dev,  # Specify device here
+            "shell", "am", "start",
+            "-a", "android.intent.action.VIEW",
+            "-d", f"spotify:track:{track}?context=spotify:album:{album}",
+            "-n", "com.spotify.music/.MainActivity"
+        ]
+        elif playlist is not None and track is not None and album is None:
+            cmd = [
             "adb", "-s", self.dev,  # Specify device here
             "shell", "am", "start",
             "-a", "android.intent.action.VIEW",
             "-d", f"spotify:track:{track}?context=spotify:playlist:{playlist}",
             "-n", "com.spotify.music/.MainActivity"
         ]
+
+
+        
 
         # cmd = [
         #     "adb", "shell", "am", "start",
@@ -272,6 +291,7 @@ class Streamer:
         if result.returncode == 0:
             print("Launched successfully:")
             print(result.stdout)
+            time.sleep(playtime)
         else:
             print("Error launching:")
             print(result.stderr)
@@ -319,14 +339,15 @@ class thread_with_trace(threading.Thread):
         self.killed = True
 
 
-def run(dev):
-    time.sleep(1)
-    try:
-        Stream = Streamer(NewInstance=False, dev=dev)
-        Stream.gen()
-        Stream.play(track="0FTmksd2dxiE5e3rWyJXs6", playlist="37i9dQZF1DXcBWIGoYBM5M")
-    except Exception as e:
-        print("An error occurred:", e)
+def run(dev, i):
+    time.sleep(i)
+    while True:
+        try:
+            Stream = Streamer(NewInstance=False, dev=dev)
+            Stream.gen()
+            Stream.play(track="0IMIrQKzgGICPqhP384drD",playtime=100)
+        except Exception as e:
+            print("An error occurred:", e)
 
 
 def get_devices():
@@ -356,6 +377,6 @@ thread = len(devlist)
 
 for i in range(1, thread + 1):
     # pp = 5554 + i * 2
-    t1 = thread_with_trace(target=run, args=[devlist[i - 1]])
+    t1 = thread_with_trace(target=run, args=[devlist[i - 1],i])
     t1.start()
     time.sleep(3)
