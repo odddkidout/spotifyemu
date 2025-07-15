@@ -14,7 +14,6 @@ import sys
 import string
 import logging
 import importlib
-from mnemonic import Mnemonic
 import gc
 
 # Отключаем все сообщения логирования
